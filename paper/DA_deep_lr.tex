@@ -1,0 +1,439 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Welcome to Overleaf --- just edit your LaTeX on the left,
+% and we'll compile it for you on the right. If you open the
+% 'Share' menu, you can invite other users to edit at the same
+% time. See www.overleaf.com/learn for more info. Enjoy!
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[conference]{IEEEtran}
+\usepackage{amsmath}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{placeins}
+\usepackage{graphicx}
+\usepackage{amsfonts}
+\usepackage{algpseudocode}
+
+
+
+\title{Evaluating the Impact of Image-to-Image Translation on Unsupervised Domain Adaptation Performance}
+
+\author{
+        \IEEEauthorblockN{Stathopoulos Dimitris}
+        \IEEEauthorblockA{
+                AUEB Msc In Data Science \\
+                Email: dim.stathopoulos@aueb.gr
+        }
+}
+\date{\25/6/2024}
+
+\begin{document}
+
+\maketitle
+\begin{abstract}
+Unsupervised domain adaptation (UDA) aims to leverage labeled data from a source domain to improve performance in a target domain where labeled data is scarce or unavailable. In this study, we investigate the potential of UDA techniques using standard benchmarks such as MNIST, USPS, and SVHN. We evaluate the effectiveness of three models: a VGG-16 architecture augmented with Deep CORAL (Deep Correlation Alignment), a simple Convolutional Neural Network (CNN) with an integrated domain discriminator, and the Domain-Adversarial Neural Network (DANN). Despite employing these established UDA techniques, the models exhibit varying degrees of success in aligning feature representations between the source and target domains, often struggling with substantial domain shifts.
+
+To further explore the possibilities of enhancing the adaptation process, we introduce CycleGAN for image-to-image translation, aiming to generate translated images that resemble the target domain. Our goal is to create a new source dataset that potentially bridges the domain gap. However, our experimental results indicate that the incorporation of CycleGAN for domain adaptation does not consistently yield significant improvements in target domain performance.
+
+This study serves as a critical examination of the efficacy of combining generative models with traditional UDA techniques. While the anticipated benefits were not realized, the findings provide valuable insights into the complexities of domain adaptation and highlight the challenges faced in achieving robust and generalized solutions. Future work will continue to refine these approaches and explore alternative methods to address these persistent issues.
+\end{abstract}
+
+\section{Introduction}
+Unsupervised domain adaptation (UDA) is a critical area in machine learning that aims to transfer knowledge from a labeled source domain to an unlabeled target domain. This task is particularly challenging when there is a significant discrepancy between the source and target domains, a scenario commonly referred to as domain shift. Various techniques have been proposed to address this issue, including feature alignment methods like Deep CORAL (Sun et al., 2016) and adversarial approaches such as the Domain-Adversarial Neural Network (DANN) (Ganin et al., 2016).
+
+Deep CORAL reduces domain shift by aligning the second-order statistics of source and target feature distributions. In contrast, DANN employs a domain discriminator to encourage indistinguishability between source and target features, effectively creating a domain-invariant representation. Despite these advancements, achieving robust and generalized domain adaptation remains a significant challenge, particularly for complex and highly divergent domains.
+
+Recently, generative models like Cycle-Consistent Generative Adversarial Networks (CycleGAN) (Zhu et al., 2017) have been explored for domain adaptation. CycleGANs are capable of learning mappings between two domains without paired examples, making them an attractive option for generating synthetic data that resembles the target domain. The hypothesis is that by transforming the source domain data to appear similar to the target domain, models trained on this transformed data could perform better on the target task.
+
+In this study, we investigate the potential of CycleGAN to enhance traditional UDA methods. We apply CycleGAN to generate target-like images from the source domain and evaluate the performance of several UDA models, including VGG-16 with Deep CORAL, a simple CNN with a domain discriminator, and DANN, on standard benchmark datasets such as MNIST, USPS, and SVHN. While previous work has shown promising results with GAN-based approaches in some contexts (Hoffman et al., 2018), our experiments reveal the nuanced and often limited benefits of this technique for UDA.
+
+Our contributions are twofold: first, we provide an empirical evaluation of the integration of CycleGAN with traditional UDA methods; second, we offer insights into the challenges and limitations of using generative models for domain adaptation. This study aims to inform future research directions by highlighting the complexities and potential pitfalls in combining these approaches.
+
+\section{Related Work}
+Unsupervised domain adaptation (UDA) has seen significant progress in recent years, with various techniques proposed to address the challenges of domain shift. Among the most notable approaches are those leveraging deep learning models like VGG-16 and domain alignment techniques such as Deep CORAL and adversarial methods like DANN.
+\subsection{VGG-16 w/ DeepCORAL}
+
+The VGG-16 architecture, introduced by Simonyan and Zisserman (2015), has been widely adopted in computer vision tasks due to its deep convolutional structure and ability to learn rich feature representations. To address domain adaptation, Deep CORAL (Sun & Saenko, 2016) extends VGG-16 by incorporating a correlation alignment (CORAL) loss that aligns the second-order statistics of the source and target feature distributions. This approach effectively minimizes the domain shift by ensuring that the covariance matrices of the source and target features are similar.
+
+Deep CORAL has demonstrated promising results in various domain adaptation tasks. For instance, in the adaptation from the MNIST to USPS datasets, Deep CORAL with VGG-16 achieves competitive performance by reducing the domain discrepancy (Sun et al., 2016). Similarly, when applied to more complex datasets like Office-31, Deep CORAL has shown to significantly improve the classification accuracy by aligning feature distributions across domains (Sun et al., 2016).
+
+\subsection{Domain-Adversarial Neural Network (DANN)}
+Another prominent approach in UDA is the Domain-Adversarial Neural Network (DANN), introduced by Ganin et al. (2016). DANN employs a gradient reversal layer that allows the model to learn domain-invariant features by adversarially training a domain discriminator alongside the primary task classifier. The domain discriminator aims to distinguish between the source and target features, while the feature extractor tries to deceive the discriminator, resulting in domain-invariant feature learning.
+
+DANN has been extensively evaluated on several benchmark datasets, demonstrating robust performance across different domain adaptation scenarios. For example, in the adaptation from SVHN to MNIST, DANN achieves high accuracy by effectively aligning the feature distributions (Ganin et al., 2016). Additionally, DANN has been successfully applied to more challenging domain adaptation tasks, such as those involving the Office-31 dataset, where it consistently outperforms traditional non-adversarial methods (Ganin et al., 2016).
+
+Both VGG-16 with Deep CORAL and DANN represent significant advancements in UDA, offering different but complementary strategies to address the domain shift problem. While Deep CORAL focuses on aligning statistical properties of feature distributions, DANN leverages adversarial training to achieve domain invariance. These approaches have set benchmarks for acceptable performance in domain adaptation tasks, providing a foundation for further research and development.
+
+\section{Methodology}
+In this section, we describe the datasets, models, and experimental setup used in our study. We detail the implementation of VGG-16 with Deep CORAL, the simple CNN with a domain discriminator, and DANN. We also outline the use of CycleGAN for image-to-image translation to generate a transformed source dataset.
+\subsection{Datasets}
+We utilize three standard benchmark datasets for domain adaptation: MNIST, USPS, and SVHN. MNIST and USPS are both digit recognition datasets but with different styles, while SVHN consists of street view house numbers, posing a more complex domain adaptation challenge due to its significantly different visual characteristics.
+\subsection{Models}
+VGG-16 with Deep CORAL: We implement the VGG-16 model modifying to accept 32x32 size images on the first Conv2D layer(algorithm 1) and extend it with the CORAL loss, which aligns the second-order statistics of the source and target domain features. 
+
+Simple CNN with Domain Discriminator: This model consists of a basic CNN for feature extraction, coupled with a domain discriminator network that classifies features as belonging to either the source or target domain. The feature extractor is trained adversarially to produce domain-invariant features.
+
+Domain-Adversarial Neural Network (DANN): DANN incorporates a gradient reversal layer that inverts the gradient from the domain discriminator, promoting the learning of domain-invariant features by the feature extractor.
+
+\subsection{CycleGAN for image Translation}
+To further investigate the potential of enhancing UDA, we employ CycleGAN to translate images from the source domain to the target domain style. CycleGAN uses cycle-consistent adversarial networks to generate realistic target-like images from the source images without requiring paired examples.
+\subsection{Experimental Setup}
+We train the models using the original source datasets and the CycleGAN-transformed source datasets. We evaluate the performance of each model on the target domain using standard classification metrics. The training and evaluation protocols are consistent across all experiments to ensure a fair comparison.
+
+\subsubsection{SimpleCNN w/ Discriminator}
+
+In this work, we employ a training methodology inspired by recent advances in domain adaptation techniques using deep learning models. Specifically, we utilize a variant of the SimpleCNN architecture augmented with a domain discriminator, as outlined in Algorithm \ref{alg:simplecnn_training_domain}. This approach enables simultaneous learning of task-specific features and domain-invariant representations through adversarial training. During training, the SimpleCNN model is optimized on labeled source domain data while the domain discriminator distinguishes between source and target domain features, encouraging the model to generalize better to unseen target domain data. Our experiments demonstrate that integrating domain adversarial learning into the training process effectively enhances the model's transferability across domains, contributing to improved performance on target domain tasks.
+
+\begin{figure}[h]
+\centering
+\begin{minipage}{.5\textwidth}
+\begin{algorithm}[H]
+\caption{SimpleCNN with Domain Discriminator Training Algorithm}
+\label{alg:simplecnn_training_domain}
+\begin{algorithmic}[1]
+\scriptsize 
+\STATE \textbf{Input:} SimpleCNN model \texttt{model},
+domain discriminator \texttt{domain\_model},
+source data loader \texttt{src\_loader},
+target data loader \texttt{tgt\_loader},
+loss function \texttt{criterion},
+SGD optimizer \texttt{opt},
+training parameters \texttt{params},
+number of epochs \texttt{epochs}
+\STATE \textbf{Output:} Trained SimpleCNN model with domain discriminator
+
+\STATE \texttt{model.train()}
+\STATE \texttt{domain\_model.train()}
+\FOR{epoch in \texttt{range(epochs)}}
+    \FOR{(\texttt{src\_data, src\_labels}), (\texttt{tgt\_data, \_}) in \texttt{zip(src\_loader, tgt\_loader)}}
+
+        \STATE \textbf{Train feature extractor and classifier on source data}
+        \STATE \texttt{opt.zero\_grad()}
+        \STATE \texttt{src\_feat} $\leftarrow$ \texttt{model.feature\_extractor(src\_data)}
+        \STATE \texttt{src\_out} $\leftarrow$ \texttt{model.clf(src\_feat.view(src\_feat.size(0), -1))}
+        \STATE \texttt{src\_loss} $\leftarrow$ \texttt{criterion(src\_out, src\_labels)}
+        \STATE \texttt{src\_loss.backward()}
+        \STATE \texttt{opt.step()}
+
+        \STATE \textbf{Train domain discriminator on source and target data}
+        \STATE \texttt{opt.zero\_grad()}
+        \STATE \texttt{dom\_labels} $\leftarrow$ \texttt{torch.cat((torch.zeros(src\_data.size(0)), torch.ones(tgt\_data.size(0)))).long()}
+        \STATE \texttt{comb\_data} $\leftarrow$ \texttt{torch.cat((src\_data, tgt\_data))}
+        \STATE \texttt{comb\_feat} $\leftarrow$ \texttt{model.feature\_extractor(comb\_data)}
+        \STATE \texttt{dom\_out} $\leftarrow$ \texttt{dom\_model(comb\_feat.view(comb\_feat.size(0), -1))}
+        \STATE \texttt{dom\_loss} $\leftarrow$ \texttt{criterion(dom\_out, dom\_labels)}
+        \STATE \texttt{dom\_loss.backward()}
+        \STATE \texttt{opt.step()}
+    \ENDFOR
+\ENDFOR
+
+\end{algorithmic}
+\end{algorithm}
+\end{minipage}
+\caption{Pseudocode for training SimpleCNN with a domain discriminator.}
+\end{figure}
+
+\FloatBarrier
+
+\subsubsection{Pre-Training VGG-16}
+In our approach, we pre-trained the VGG-16 model on the MNIST and SVHN datasets following a structured algorithm comprising both training and validation steps (see Algorithm \ref{alg:vgg16_training_validation}). During each epoch, the model was trained using the training data loader with stochastic gradient descent optimization. For each batch, the loss was computed using a specified criterion, followed by backpropagation and parameter updates. Post-training, the model's performance was evaluated using a validation data loader, calculating the validation loss and accuracy without updating the model's parameters. This ensured that the VGG-16 model was effectively pre-trained, balancing both learning and generalization across the dataset.
+\begin{figure}[h]
+\centering
+\begin{minipage}{.5\textwidth}
+\begin{algorithm}[H]
+\caption{VGG-16 Training Algorithm with Validation}
+\label{alg:vgg16_training_validation}
+\begin{algorithmic}[1]
+\scriptsize
+\STATE \textbf{Input:} VGG-16 model \texttt{vgg16},
+training data loader \texttt{trainloader},
+validation data loader \texttt{val\_loader},
+loss function \texttt{criterion},
+SGD optimizer \texttt{optimizer},
+training parameters \texttt{params}
+\STATE \textbf{Output:} Trained VGG-16 model
+
+\FOR{epoch in \texttt{range(params['num\_epochs'])}}
+    \STATE \texttt{vgg16.train()}
+    \STATE \texttt{running\_loss} $\leftarrow 0.0$
+    \FOR{\texttt{images, labels} in \texttt{trainloader}}
+        \STATE \texttt{optimizer.zero\_grad()}
+        \STATE \textbf{Forward pass}
+        \STATE \texttt{outputs} $\leftarrow$ \texttt{vgg16(images)}
+        \STATE \texttt{loss} $\leftarrow$ \texttt{criterion(outputs, labels)}
+        \STATE \textbf{Backward pass and optimization}
+        \STATE \texttt{loss.backward()}
+        \STATE \texttt{optimizer.step()}
+        \STATE \texttt{running\_loss}$\leftarrow$\texttt{running\_loss+loss.item()}
+    \ENDFOR
+    \STATE \textbf{Validation step}
+    \STATE \texttt{vgg16.eval()}
+    \STATE \texttt{val\_loss} $\leftarrow 0.0$
+    \STATE \texttt{correct} $\leftarrow 0$
+    \STATE \texttt{total} $\leftarrow 0$
+    \STATE \texttt{with torch.no\_grad():}
+        \FOR{\texttt{images, labels} in \texttt{val\_loader}}
+            \STATE \texttt{outputs} $\leftarrow$ \texttt{vgg16(images)}
+            \STATE \texttt{loss} $\leftarrow$ \texttt{criterion(outputs, labels)}
+            \STATE \texttt{val\_loss} $\leftarrow$ \texttt{val\_loss + loss.item()}
+            \STATE \texttt{predicted}$\leftarrow$\texttt{torch.max(outputs.data, 1)}
+            \STATE \texttt{total} $\leftarrow$ \texttt{total + labels.size(0)}
+            \STATE \texttt{correct}$\leftarrow$\texttt{correct+(predicted==labels).sum().item()}
+        \ENDFOR
+    \STATE \texttt{val\_loss} $\leftarrow$ \texttt{val\_loss / len(val\_loader)}
+    \STATE \texttt{val\_accuracy} $\leftarrow 100 \times \texttt{correct / total}$
+\ENDFOR
+
+\end{algorithmic}
+\end{algorithm}
+\end{minipage}
+\caption{Pseudocode for training VGG-16 with validation step.}
+\end{figure}
+
+
+
+\subsubsection{Pre-Trained VGG-16 w/ DeepCORAL}
+In our study, we adopt a training strategy leveraging the CORAL (CORrelation ALignment) loss to enhance domain adaptation in deep learning models. Algorithm \ref{alg:training_with_coral} outlines our training procedure, where we simultaneously train a neural network on source domain (SVHN) and target domain (MNIST) data. During each iteration, the model is optimized using the cross-entropy loss for classification on the source domain, while incorporating the CORAL loss to minimize domain discrepancy between feature distributions of the source and target domains. This adversarial approach helps the model learn domain-invariant representations, crucial for improving performance on target domain tasks. By integrating CORAL loss into our training framework, we aim to achieve robust and generalized deep learning models capable of handling domain shift challenges effectively.
+\begin{figure}[h]
+\centering
+\begin{minipage}{.5\textwidth}
+\begin{algorithm}[H]
+\caption{VGG-16 w/ DeepCORAL Algorithm}
+\label{alg:training_with_coral}
+\begin{algorithmic}[1]
+\scriptsize
+\STATE \textbf{Input:} VGG-16 w/ DeepCORAL \texttt{model},
+source data loader \texttt{src\_trainloader},
+target data loader \texttt{tgt\_trainloader},
+loss function \texttt{criterion},
+Adam optimizer \texttt{optimizer},
+\STATE \textbf{Output:} Trained VGG-16 model
+\STATE \texttt{model.train()}
+\STATE \texttt{result = []}
+\STATE \texttt{src, tgt = list(iter(src\_trainloader)), list(iter(tgt\_trainloader))}
+\STATE \texttt{train\_steps = min(len(src), len(tgt))}
+
+\FOR{\texttt{batch\_idx} \textbf{in} \texttt{range(train\_steps)}}
+    \STATE \texttt{src\_data, src\_label = src[batch\_idx]}
+    \STATE \texttt{tgt\_data, \_ = tgt[batch\_idx]}
+
+    \STATE \texttt{src\_data, src\_label = Variable(src\_data)), Variable(src\_label)}
+    \STATE \texttt{tgt\_data = Variable(tgt\_data))}
+
+    \STATE \texttt{optimizer.zero\_grad()}
+    \STATE \texttt{out1, out2 = model(src\_data), model(tgt\_data)}
+    \STATE \texttt{clf\_loss = F.cross\_entropy(out1, src\_label)}
+    \STATE \texttt{coral\_loss = CORAL(out1, out2)} 
+    \STATE \texttt{total\_loss = \_lambda * coral\_loss + clf\_loss}
+    \STATE \texttt{total\_loss.backward()}
+    \STATE \texttt{optimizer.step()}
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+\end{minipage}
+\caption{Training Procedure with CORAL Loss}
+\end{figure}
+\FloatBarrier
+
+\subsubsection{Preprocessing Step (CycleGAN)}
+
+CycleGAN, or Cycle-Consistent GAN, is a type of generative adversarial network for unpaired image-to-image translation. For two domains, i.e. \(X\) is MNIST and \(Y\) is SVHN, our objective is to make MNIST look like SVHN to aid unsupervised domain adaptation. CycleGAN learns mappings \(G: X \rightarrow Y\) and \(F: Y \rightarrow X\). The novelty lies in trying to enforce the intuition that these mappings should be reverses of each other and that both mappings should be bijections. This is achieved through a \textbf{cycle consistency loss} that encourages \(F(G(x)) \approx x\) and \(G(F(y)) \approx y\). Combining this loss with the adversarial losses on \(X\) and \(Y\) yields the full objective for unpaired image-to-image translation.
+
+For the mapping \(G : X \rightarrow Y\) and its discriminator \(D_Y\), we have the objective:
+\begin{equation}
+\begin{split}
+\mathcal{L}_{GAN}(G, D_Y, X, Y) = \mathbb{E}_{y \sim p_{\text{data}}(y)} [\log D_Y(y)] \\[6pt]
++\mathbb{E}_{x \sim p_{\text{data}}(x)} \left[ \log (1 - D_Y(G(x))) \vphantom{\mathbb{E}_{y \sim p_{\text{data}}(y)}} \right]
+\end{split}
+\end{equation}
+where \(G\) tries to generate images \(G(x)\) that look similar to images from domain \(Y\), while \(D_Y\) tries to discriminate between translated samples \(G(x)\) and real samples \(y\). A similar loss is postulated for the mapping \(F : Y \rightarrow X\) and its discriminator \(D_X\).
+
+The \textbf{Cycle Consistency Loss} reduces the space of possible mapping functions by enforcing forward and backward consistency:
+\begin{equation}
+\begin{split}
+\mathcal{L}_{\text{cyc}}(G, F) = \mathbb{E}_{x \sim p_{\text{data}}(x)} \|F(G(x)) - x\|_1 \\
++ \mathbb{E}_{y \sim p_{\text{data}}(y)} \|G(F(y)) - y\|_1
+\end{split}
+\end{equation}
+
+The full objective is:
+\begin{equation}
+\begin{split}
+\mathcal{L}_{GAN}(G, F, D_X, D_Y) = \mathcal{L}_{GAN}(G, D_Y, X, Y) \\
++ \mathcal{L}_{GAN}(F, D_X, Y, X) \\
++ \lambda \mathcal{L}_{\text{cyc}}(G, F)
+\end{split}
+\end{equation}
+where we aim to solve:
+\[
+G^*, F^* = \arg \min_{G, F} \max{D_X, D_Y} \mathcal{L}_{GAN}(G, F, D_X, D_Y)
+\]
+
+\subsubsection{DANN Training}
+In this study, we employ a comprehensive training loop for both Source Only and Domain-Adversarial Neural Network (DANN) models, as illustrated in Algorithm \ref{alg:dann_training}. The algorithm begins by initializing the encoder ($E$), classifier ($C$), and discriminator ($D$) for DANN, along with the respective source and target training loaders ($S_{train}$ and $T_{train}$) and necessary parameters. For each epoch, the encoder and classifier, and discriminator in the case of DANN, are set to training mode. The algorithm calculates the current progress ($p$) to adjust the learning rate scheduler and the domain adaptation parameter ($\alpha$). For each batch of source and target data, classification loss is computed using the source data, and domain loss is computed using both source and target data if using DANN. The total loss, comprising classification and domain losses, is backpropagated to update the model parameters. The training process includes periodic progress logging and concludes with an evaluation of the trained models on both source and target test datasets. This method ensures robust training and domain adaptation, facilitating improved generalization across domain
+\begin{algorithm}
+\caption{Training Loop for Source Only and DANN}
+\label{alg:dann_training}
+\begin{algorithmic}[1]
+\scriptsize
+\State \textbf{Input:} Encoder $E$, Classifier $C$, Discriminator $D$ (for DANN), Source Training Loader $S_{train}$, Target Training Loader $T_{train}$, Parameters $params$
+\State \textbf{Output:} Trained Models $E$, $C$, (and $D$ for DANN)
+
+\State Initialize loss functions: $\text{Loss}_\text{class} \gets \text{CrossEntropyLoss()}$
+\State Initialize optimizer with parameters from $E$, $C$ (and $D$ for DANN)
+
+\For {epoch $e$ from 1 to $params['epochs']$}
+    \State Set $E$ and $C$ (and $D$ for DANN) to training mode
+    \State $start\_steps \gets e \times \text{len}(S_{train})$
+    \State $total\_steps \gets params['epochs'] \times \text{len}(T_{train})$
+
+    \For {batch $(b_s, b_t)$ in $\text{zip}(S_{train}, T_{train})$}
+        \State $(s\_images, s\_labels) \gets b_s$
+        \State $(t\_images, t\_labels) \gets b_t$
+        \State $p \gets \frac{(batch\_idx + start\_steps)}{total\_steps}$
+        \State $\text{optimizer} \gets \text{optimizer\_scheduler}(\text{optimizer}, p)$
+        \State $\text{optimizer.zero\_grad()}$
+
+        \State $s\_features \gets E(s\_images)$
+
+        \State \textbf{Classification Loss}:
+        \State $s\_class\_pred \gets C(s\_features)$
+        \State $class\_loss \gets \text{Loss}_\text{class}(s\_class\_pred, s\_labels)$
+
+        \If {Using DANN}
+            \State $alpha \gets \frac{2}{1 + \exp(-10 \times p)} - 1$
+            \State $combined\_images \gets \text{concat}(s\_images, t\_images)$
+            \State $combined\_features \gets E(combined\_images)$
+            \State \textbf{Domain Loss}:
+            \State $domain\_pred \gets D(combined\_features, alpha)$
+            \State $domain\_labels \gets \text{concat}(\text{zeros\_like}(s\_labels), \text{ones\_like}(t\_labels))$
+            \State $domain\_loss \gets \text{Loss}_\text{class}(domain\_pred, domain\_labels)$
+
+            \State $total\_loss \gets class\_loss + domain\_loss$
+        \Else
+            \State $total\_loss \gets class\_loss$
+        \EndIf
+
+        \State Backpropagate: $total\_loss.\text{backward()}$
+        \State Update model weights: $\text{optimizer.step()}$
+
+        \If {$(batch\_idx + 1) \% 100 == 0$}
+            \State Print progress
+        \EndIf
+    \EndFor
+
+    \State Evaluate: $\text{tester}(E, C, (D), S_{test}, T_{test}, \text{'Source\_only'} \text{ or } \text{'DANN'})$
+\EndFor
+
+\State Save models and generate visualizations
+
+\end{algorithmic}
+\end{algorithm}
+\caption{Training Procedure with CORAL Loss}
+
+\FloatBarrier
+
+
+\section{Experimental Results}
+We conduct extensive experiments to evaluate the effectiveness of VGG-16 with Deep CORAL, the simple CNN with domain discriminator, and DANN on the task of domain adaptation. We present quantitative results in terms of classification accuracy and provide qualitative analyses of the feature alignments achieved by each method.
+
+\subsection{VGG-16 Pre-Training}
+Pre-training of the VGG-16 model took place for MNIST and SVHN datasets seperatly, thus, resulting in
+two in total pre-trained VGG-16 classifiers. The train,validation and test sets where comprised of 
+84\% of the original training set (from torchvision) with the remaining percentage acting as a validation set and the test set was 10000 samples, for both datasets.
+\vspace{5pt}
+\begin{table}[h!]
+\centering
+\begin{tabular}{||c c c||}
+  \hline
+    VGG-16 & Validation & Set Test Set \\ 
+    \hline \hline
+    Loss & 0.0105 & 0.0101 \\  
+    Accuracy & 99.73\% & 99.78\% \\ 
+    \hline
+\end{tabular} \\ [1ex]
+\caption{MNIST VGG-16 pre-training results.}
+\label{table:1}
+\end{table}
+The pre-training results for the VGG-16 model on the MNIST dataset are summarized in Table \ref{tab:mnist_results}. The model achieved an impressive validation loss of 0.0105 and a test set loss of 0.0101. In terms of accuracy, the model performed exceptionally well, with a validation accuracy of 99.73\% and a test set accuracy of 99.78\%. These results indicate that the VGG-16 model is highly effective at learning from the MNIST training data, generalizing well to both the validation and test sets.
+
+\begin{table}[h!]
+  \centering
+  \begin{tabular}{||c c c||}
+  \hline
+    VGG-16 & Validation & Set Test Set \\ 
+    \hline \hline
+    Loss & 0.0624 & 0.0688 \\  
+    Accuracy & 98.27\% & 98.16\% \\
+    \hline
+  \end{tabular} \\ [1ex]
+  \caption{SVHN VGG-16 pre-training results.}
+  \label{tab:example_table}
+\end{table}
+
+In contrast, the pre-training results for the VGG-16 model on the SVHN dataset, as shown in Table \ref{tab:svhn_results}, were slightly less impressive. The validation loss was recorded at 0.0624, while the test set loss was slightly higher at 0.0688. The model achieved a validation accuracy of 98.27\% and a test set accuracy of 98.16\%. Although the performance on the SVHN dataset is still quite strong, it is evident that the model had a harder time generalizing compared to the MNIST dataset, as indicated by the higher loss values and lower accuracy percentages.
+
+\subsection{Results on UDA}
+Following we present the results from our UDA operations on three different models. Specifically we use USPS, MNIST and SVHN as previously explained.
+
+
+The performance of different models when the source domain is MNIST and the target domain is SVHN is presented in Table \ref{tab:mnist_svhn}. The baseline model achieves a high source accuracy of 94.26\% but suffers a significant drop in target accuracy, reaching only 19.99\%. The pre-trained VGG-16-DC model shows a marked improvement with a source accuracy of 99.07\% and a target accuracy of 29.11\%. The DANN model also improves upon the baseline with a source accuracy of 96.48\% and a target accuracy of 21.33\%, indicating better generalization to the target domain compared to the baseline but not as effective as the pre-trained VGG-16-DC.
+
+
+\begin{table}[h!]
+  \centering
+  \begin{tabular}{||c c c||}
+  \hline
+    Models & Souce Accuracy & Target Accuracy \\ 
+    \hline \hline
+    Baseline & 94.26\% & 19.99\% \\  
+    Pre-Tr VGG-16-DC & 99.07\% & 29.11\% \\
+    DANN & 96.48\% & 21.33\% \\
+    \hline
+  \end{tabular} \\ [1ex]
+  \caption{Source: MNIST, Target: SVHN and VGG-16 is pre-trained on MNIST.}
+  \label{tab:mnist_svhn}
+\end{table}
+
+When the source domain is transformed-MNIST and the target domain is SVHN, the results change significantly as shown in Table \ref{tab:trmnist_svhn}. The baseline model struggles in this scenario, with a source accuracy of 14.43\% and a target accuracy of 11.57\%. The pre-trained VGG-16-DC model performs much better, achieving a source accuracy of 84.73\% and a target accuracy of 27.55\%. The DANN model shows moderate performance improvements over the baseline, with a source accuracy of 15.82\% and a target accuracy of 18.34\%, highlighting the challenge of domain adaptation between these datasets.
+
+\begin{table}[h!]
+  \centering
+  \begin{tabular}{c c c}
+  \hline
+    Models & Souce Accuracy & Target Accuracy \\ 
+    \hline \hline
+    Baseline & 14.43\% & 11.57\% \\  
+    Pre-Tr VGG-16-DC & 84.73\% & 27.55\% \\
+    DANN & 15.82\% & 18.34\% \\
+    \hline
+  \end{tabular} \\ [1ex]
+  \caption{Source: transformed-MNIST, Target: SVHN and VGG-16 is pre-trained on MNIST.}
+  \label{tab:trmnist_svhn}
+\end{table}
+
+Table \ref{tab:svhn_mnist} presents the results when the source domain is SVHN and the target domain is MNIST, with the VGG-16 model pre-trained on SVHN. The baseline model performs reasonably well with a source accuracy of 85.10\% and a target accuracy of 55.01\%. The pre-trained VGG-16-DC model exhibits the best performance, with a source accuracy of 91.21\% and a target accuracy of 70.77\%. The DANN model, however, shows an unusual pattern with a much lower source accuracy of 30.80\% but a target accuracy almost identical to the baseline at 55.00\%. This suggests that while the DANN model may be more effective at adapting to the target domain, it does so at the expense of performance on the source domain.
+
+\begin{table}[h!]
+  \centering
+  \begin{tabular}{||c c c||}
+  \hline
+    Models & Souce Accuracy & Target Accuracy \\ 
+    \hline \hline
+    Baseline & 85.10\% & 55.01\% \\  
+    Pre-Tr VGG-16-DC & 91.21\% & 70.77\% \\
+    DANN & 30.80\% & 55.00\% \\
+    \hline
+  \end{tabular} \\ [1ex]
+  \caption{Source: SVHN, Target: MNIST and VGG-16 is pre-trained on SVHN.}
+  \label{tab:svhn_mnist}
+\end{table}
+
+\section{Conclusions}
+In summary, the experiments underscore the inherent challenges of domain adaptation, particularly when transitioning between datasets with distinct characteristics. The relatively limited feature space of MNIST presents a significant hurdle, as it lacks the complexity found in more diverse datasets like SVHN. This limitation was further compounded by the absence of fine-tuning, which adversely impacted the performance of the models. Notably, some baseline models, despite their simplicity, managed to outperform more specialized architectures, highlighting the potential pitfalls of over-engineering solutions without adequate dataset-specific adjustments. These findings suggest that there is substantial room for improvement in domain adaptation techniques. Future work should focus on enhancing feature extraction processes, incorporating robust fine-tuning strategies, and exploring more sophisticated models that can better generalize across domains.
+
+
+
+
+\end{document}
