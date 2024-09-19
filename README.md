@@ -12,9 +12,3 @@ This repository contains implementations of various unsupervised domain adaptati
 - `paper/`: Contains the manuscript/report.
   - `report.pdf`: Detailed report of the project, methodologies, and results.
 
-## Installation
-
-To run the notebooks, ensure you have the necessary dependencies installed. You can install the required packages using `pip`:
-
-```bash
-pip install -r requirements.txt
